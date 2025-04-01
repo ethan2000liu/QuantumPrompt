@@ -1,28 +1,16 @@
 console.log('QuantumPrompt: Extension loaded');
 
-// Configuration for different AI platforms with more specific selectors
-const PLATFORMS = {
-  'chat.openai.com': {
-    inputSelectors: [
-      '#prompt-textarea',
-      'textarea[data-id="root"]', 
-      'textarea.text-input',
-      'form textarea',
-      'div[role="textbox"]',
-      'textarea'
-    ]
-  },
-  'gemini.google.com': {
-    inputSelectors: [
-      'textarea[aria-label="Response input"]',
-      'textarea[placeholder="Enter a prompt"]',
-      'textarea[aria-label="Input"]',
-      'textarea.message-input',
-      '[contenteditable="true"]',
-      'div[role="textbox"]',
-      'textarea'
-    ]
-  }
+// Configuration for Gemini platform
+const PLATFORM_CONFIG = {
+  inputSelectors: [
+    'textarea[aria-label="Response input"]',
+    'textarea[placeholder="Enter a prompt"]',
+    'textarea[aria-label="Input"]',
+    'textarea.message-input',
+    '[contenteditable="true"]',
+    'div[role="textbox"]',
+    'textarea'
+  ]
 };
 
 // Try to find an element using multiple selectors
@@ -38,13 +26,6 @@ function findElement(selectors) {
   console.log('QuantumPrompt: No element found with selectors:', selectors);
   return null;
 }
-
-// Determine current platform
-const currentPlatform = Object.keys(PLATFORMS).find(domain => 
-  window.location.hostname.includes(domain)
-);
-
-console.log('QuantumPrompt: Detected platform:', currentPlatform);
 
 // Create the enhance button element
 function createEnhanceButton() {
@@ -65,13 +46,13 @@ function createEnhanceButton() {
   return enhanceButton;
 }
 
-// Function to position the button relative to the input element
+// Position the button relative to the input element
 function positionButton(button, inputElement) {
   const rect = inputElement.getBoundingClientRect();
   
-  // Position in the top-right corner of the input
-  button.style.top = `${rect.top + window.scrollY - 40}px`;
-  button.style.left = `${rect.right + window.scrollX - 100}px`;
+  // Position the button near the top-right of the input
+  button.style.top = `${rect.top + 10}px`;
+  button.style.left = `${rect.right - button.offsetWidth - 10}px`;
 }
 
 // Function to handle input element hover
@@ -106,40 +87,33 @@ function setupHoverBehavior(inputElement) {
       let promptText = '';
       if (activeInput.value !== undefined && activeInput.value !== null) {
         promptText = activeInput.value;
-      } else if (activeInput.textContent !== undefined && activeInput.textContent !== null) {
+      } else if (activeInput.textContent) {
         promptText = activeInput.textContent;
-      } else if (activeInput.innerText !== undefined && activeInput.innerText !== null) {
-        promptText = activeInput.innerText;
       }
       
-      if (!promptText || !promptText.trim()) {
-        alert('Please enter a prompt to enhance');
+      if (!promptText.trim()) {
+        console.error('QuantumPrompt: No prompt text found');
         return;
       }
       
-      console.log('QuantumPrompt: Got prompt text:', promptText);
-      
+      // Disable the button and show loading state
       enhanceButton.disabled = true;
       enhanceButton.innerHTML = '⏳ Enhancing...';
       
       try {
+        // Enhance the prompt
         const enhancedPrompt = await enhancePrompt(promptText);
         
-        // Update the input field
-        if (activeInput.value !== undefined) {
+        // Update the input with the enhanced prompt
+        if (activeInput.value !== undefined && activeInput.value !== null) {
           activeInput.value = enhancedPrompt;
+          // Trigger input event to notify the application
+          activeInput.dispatchEvent(new Event('input', { bubbles: true }));
         } else if (activeInput.textContent !== undefined) {
           activeInput.textContent = enhancedPrompt;
-        } else if (activeInput.innerText !== undefined) {
-          activeInput.innerText = enhancedPrompt;
+          // Trigger input event to notify the application
+          activeInput.dispatchEvent(new Event('input', { bubbles: true }));
         }
-        
-        // Trigger input event to make sure the AI platform recognizes the change
-        activeInput.dispatchEvent(new Event('input', { bubbles: true }));
-        activeInput.dispatchEvent(new Event('change', { bubbles: true }));
-        
-        // Focus the input element
-        activeInput.focus();
         
         console.log('QuantumPrompt: Prompt enhanced successfully');
       } catch (error) {
@@ -199,15 +173,8 @@ function setupHoverBehavior(inputElement) {
 
 // Function to find input elements and set up hover behavior
 function setupInputElements() {
-  if (!currentPlatform) {
-    console.log('QuantumPrompt: Not on a supported platform');
-    return;
-  }
-  
-  const config = PLATFORMS[currentPlatform];
-  
   // Find all matching input elements
-  config.inputSelectors.forEach(selector => {
+  PLATFORM_CONFIG.inputSelectors.forEach(selector => {
     const elements = document.querySelectorAll(selector);
     elements.forEach(element => {
       setupHoverBehavior(element);
@@ -216,31 +183,19 @@ function setupInputElements() {
 }
 
 async function enhancePrompt(originalPrompt) {
-  // Update this URL with your actual deployed AI service endpoint
-  const enhancementServiceUrl = 'https://quantum-prompt-58xau0f7o-ethan2000lius-projects.vercel.app/api/enhance';
-  
+  // For simplicity, we'll just enhance the prompt locally
   console.log('QuantumPrompt: Enhancing prompt:', originalPrompt);
   
-  try {
-    const response = await fetch(enhancementServiceUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ prompt: originalPrompt })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Server responded with ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log('QuantumPrompt: Enhanced prompt received:', data.enhancedPrompt);
-    return data.enhancedPrompt;
-  } catch (error) {
-    console.error('QuantumPrompt: Error calling enhancement service:', error);
-    throw error;
-  }
+  // Simple enhancement logic
+  const enhancedPrompt = originalPrompt + "\n\n" +
+    "Please provide a detailed, step-by-step explanation in your response. " +
+    "Include relevant examples and consider different perspectives. " +
+    "If applicable, mention any limitations or assumptions in your answer.";
+  
+  // Simulate a delay to show the loading state
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  return enhancedPrompt;
 }
 
 // Try to set up input elements immediately
@@ -253,11 +208,10 @@ setTimeout(setupInputElements, 1000);
 window.addEventListener('load', () => {
   console.log('QuantumPrompt: Page loaded');
   setTimeout(setupInputElements, 1000);
-  setTimeout(setupInputElements, 3000);
 });
 
 // Set up a mutation observer to detect when new input elements are added
-const observer = new MutationObserver((mutations) => {
+const observer = new MutationObserver(() => {
   setupInputElements();
 });
 
@@ -266,8 +220,5 @@ observer.observe(document.body, {
   childList: true,
   subtree: true
 });
-
-// Try periodically in case the UI is slow to load or changes
-setInterval(setupInputElements, 5000);
 
 console.log('QuantumPrompt: Setup complete');
