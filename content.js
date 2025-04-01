@@ -228,32 +228,24 @@ function setupInputElements() {
 async function enhancePrompt(originalPrompt) {
   console.log('QuantumPrompt: Enhancing prompt:', originalPrompt);
   
-  try {
-    // Call the actual API endpoint
-    const response = await fetch('https://quantum-prompt-api.vercel.app/api/enhance', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prompt: originalPrompt }),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API responded with status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data.enhancedPrompt) {
-      return data.enhancedPrompt;
-    } else {
-      throw new Error('No enhanced prompt returned from API');
-    }
-  } catch (error) {
-    console.error('Error enhancing prompt:', error);
-    // Fallback to simple enhancement if API call fails
-    return originalPrompt + "\n\nPlease provide a detailed, step-by-step explanation in your response.";
-  }
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { action: 'enhancePrompt', prompt: originalPrompt },
+      (response) => {
+        if (response.success) {
+          resolve(response.enhancedPrompt);
+        } else {
+          console.error('Error from background script:', response.error);
+          // Use fallback if provided
+          if (response.fallbackPrompt) {
+            resolve(response.fallbackPrompt);
+          } else {
+            reject(new Error(response.error || 'Unknown error'));
+          }
+        }
+      }
+    );
+  });
 }
 
 // Try to set up input elements immediately
