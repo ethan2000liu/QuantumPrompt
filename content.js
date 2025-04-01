@@ -13,6 +13,12 @@ const PLATFORM_CONFIG = {
   ]
 };
 
+// Cooldown configuration
+const COOLDOWN_CONFIG = {
+  durationMs: 5000, // 5 seconds cooldown
+  lastUsedTime: 0
+};
+
 // Try to find an element using multiple selectors
 function findElement(selectors) {
   for (const selector of selectors) {
@@ -55,6 +61,26 @@ function positionButton(button, inputElement) {
   button.style.left = `${rect.right - button.offsetWidth - 10}px`;
 }
 
+// Check if the button is on cooldown
+function isOnCooldown() {
+  const now = Date.now();
+  const timeSinceLastUse = now - COOLDOWN_CONFIG.lastUsedTime;
+  return timeSinceLastUse < COOLDOWN_CONFIG.durationMs;
+}
+
+// Start the cooldown timer
+function startCooldown() {
+  COOLDOWN_CONFIG.lastUsedTime = Date.now();
+}
+
+// Get remaining cooldown time in seconds
+function getRemainingCooldownSeconds() {
+  const now = Date.now();
+  const timeSinceLastUse = now - COOLDOWN_CONFIG.lastUsedTime;
+  const remainingMs = Math.max(0, COOLDOWN_CONFIG.durationMs - timeSinceLastUse);
+  return Math.ceil(remainingMs / 1000);
+}
+
 // Function to handle input element hover
 function setupHoverBehavior(inputElement) {
   // Check if we already set up hover for this element
@@ -75,6 +101,13 @@ function setupHoverBehavior(inputElement) {
     enhanceButton.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
+      
+      // Check if the button is on cooldown
+      if (isOnCooldown()) {
+        const remainingSeconds = getRemainingCooldownSeconds();
+        alert(`Please wait ${remainingSeconds} seconds before enhancing again.`);
+        return;
+      }
       
       // Get the active input element
       const activeInput = document.querySelector('[data-quantum-prompt-active="true"]');
@@ -101,6 +134,9 @@ function setupHoverBehavior(inputElement) {
       enhanceButton.innerHTML = '⏳ Enhancing...';
       
       try {
+        // Start the cooldown
+        startCooldown();
+        
         // Enhance the prompt
         const enhancedPrompt = await enhancePrompt(promptText);
         
@@ -134,8 +170,17 @@ function setupHoverBehavior(inputElement) {
     // Position the button relative to this input
     positionButton(enhanceButton, inputElement);
     
+    // Update button appearance based on cooldown status
+    if (isOnCooldown()) {
+      const remainingSeconds = getRemainingCooldownSeconds();
+      enhanceButton.innerHTML = `⏳ ${remainingSeconds}s`;
+      enhanceButton.style.opacity = '0.7';
+    } else {
+      enhanceButton.innerHTML = '✨ Enhance';
+      enhanceButton.style.opacity = '1';
+    }
+    
     // Make button visible and clickable
-    enhanceButton.style.opacity = '1';
     enhanceButton.style.pointerEvents = 'auto';
   });
   
@@ -233,5 +278,16 @@ observer.observe(document.body, {
   childList: true,
   subtree: true
 });
+
+// Update cooldown timer display every second
+setInterval(() => {
+  const enhanceButton = document.getElementById('quantum-enhance-btn');
+  if (enhanceButton && isOnCooldown() && enhanceButton.style.opacity !== '0') {
+    const remainingSeconds = getRemainingCooldownSeconds();
+    enhanceButton.innerHTML = `⏳ ${remainingSeconds}s`;
+  } else if (enhanceButton && !isOnCooldown() && enhanceButton.innerHTML.includes('s')) {
+    enhanceButton.innerHTML = '✨ Enhance';
+  }
+}, 1000);
 
 console.log('QuantumPrompt: Setup complete');
