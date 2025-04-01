@@ -167,8 +167,6 @@ function setupHoverBehavior(inputElement) {
     enhanceButton.style.opacity = '0';
     enhanceButton.style.pointerEvents = 'none';
   });
-  
-  console.log('QuantumPrompt: Hover behavior set up for input element');
 }
 
 // Function to find input elements and set up hover behavior
@@ -183,19 +181,34 @@ function setupInputElements() {
 }
 
 async function enhancePrompt(originalPrompt) {
-  // For simplicity, we'll just enhance the prompt locally
   console.log('QuantumPrompt: Enhancing prompt:', originalPrompt);
   
-  // Simple enhancement logic
-  const enhancedPrompt = originalPrompt + "\n\n" +
-    "Please provide a detailed, step-by-step explanation in your response. " +
-    "Include relevant examples and consider different perspectives. " +
-    "If applicable, mention any limitations or assumptions in your answer.";
-  
-  // Simulate a delay to show the loading state
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  return enhancedPrompt;
+  try {
+    // Call the actual API endpoint
+    const response = await fetch('https://quantum-prompt-api.vercel.app/api/enhance', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt: originalPrompt }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API responded with status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.enhancedPrompt) {
+      return data.enhancedPrompt;
+    } else {
+      throw new Error('No enhanced prompt returned from API');
+    }
+  } catch (error) {
+    console.error('Error enhancing prompt:', error);
+    // Fallback to simple enhancement if API call fails
+    return originalPrompt + "\n\nPlease provide a detailed, step-by-step explanation in your response.";
+  }
 }
 
 // Try to set up input elements immediately
