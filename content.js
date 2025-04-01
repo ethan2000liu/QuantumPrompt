@@ -1,6 +1,6 @@
 console.log('QuantumPrompt: Extension loaded');
 
-// Configuration for different AI platforms with specific selectors
+// Configuration for different AI platforms with more specific selectors
 const PLATFORMS = {
   'chat.openai.com': {
     inputSelectors: [
@@ -46,141 +46,177 @@ const currentPlatform = Object.keys(PLATFORMS).find(domain =>
 
 console.log('QuantumPrompt: Detected platform:', currentPlatform);
 
-// Function to create a completely new button element
-function createFloatingButton() {
-  // Remove any existing button first
-  const existingButton = document.getElementById('quantum-enhance-btn');
-  if (existingButton) {
-    existingButton.remove();
-  }
-  
-  // Create a div container for the button (for better isolation)
-  const buttonContainer = document.createElement('div');
-  buttonContainer.id = 'quantum-enhance-container';
-  buttonContainer.style.position = 'fixed';
-  buttonContainer.style.bottom = '30px';
-  buttonContainer.style.right = '30px';
-  buttonContainer.style.zIndex = '2147483647'; // Maximum z-index
-  buttonContainer.style.fontFamily = 'Arial, sans-serif';
-  
-  // Create the button
+// Create the enhance button element
+function createEnhanceButton() {
   const enhanceButton = document.createElement('button');
   enhanceButton.id = 'quantum-enhance-btn';
-  enhanceButton.textContent = '✨ Enhance';
+  enhanceButton.className = 'quantum-enhance-btn';
+  enhanceButton.innerHTML = '✨ Enhance';
   enhanceButton.title = 'Enhance your prompt with QuantumPrompt';
   
-  // Apply extreme styling to ensure visibility
-  enhanceButton.style.backgroundColor = '#6c5ce7';
-  enhanceButton.style.color = 'white';
-  enhanceButton.style.border = 'none';
-  enhanceButton.style.borderRadius = '8px';
-  enhanceButton.style.padding = '15px 25px';
-  enhanceButton.style.fontSize = '18px';
-  enhanceButton.style.fontWeight = 'bold';
-  enhanceButton.style.cursor = 'pointer';
-  enhanceButton.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
-  enhanceButton.style.transition = 'all 0.3s ease';
-  enhanceButton.style.display = 'block';
-  enhanceButton.style.width = 'auto';
-  enhanceButton.style.height = 'auto';
-  enhanceButton.style.margin = '0';
-  enhanceButton.style.opacity = '1';
-  enhanceButton.style.visibility = 'visible';
-  enhanceButton.style.transform = 'none';
-  enhanceButton.style.pointerEvents = 'auto';
-  
-  // Add the button to the container
-  buttonContainer.appendChild(enhanceButton);
-  
-  // Add the container to the document body
-  document.body.appendChild(buttonContainer);
-  
-  console.log('QuantumPrompt: Created new floating button');
+  // Style the button
+  enhanceButton.style.position = 'absolute';
+  enhanceButton.style.zIndex = '9999';
+  enhanceButton.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+  enhanceButton.style.opacity = '0';
+  enhanceButton.style.transition = 'opacity 0.2s ease-in-out';
+  enhanceButton.style.pointerEvents = 'none'; // Initially not clickable
   
   return enhanceButton;
 }
 
-// Function to inject the enhance button
-function injectEnhanceButton() {
+// Function to position the button relative to the input element
+function positionButton(button, inputElement) {
+  const rect = inputElement.getBoundingClientRect();
+  
+  // Position in the top-right corner of the input
+  button.style.top = `${rect.top + window.scrollY - 40}px`;
+  button.style.left = `${rect.right + window.scrollX - 100}px`;
+}
+
+// Function to handle input element hover
+function setupHoverBehavior(inputElement) {
+  // Check if we already set up hover for this element
+  if (inputElement.dataset.quantumPromptHover === 'true') {
+    return;
+  }
+  
+  // Mark this element as having hover behavior set up
+  inputElement.dataset.quantumPromptHover = 'true';
+  
+  // Create the button if it doesn't exist
+  let enhanceButton = document.getElementById('quantum-enhance-btn');
+  if (!enhanceButton) {
+    enhanceButton = createEnhanceButton();
+    document.body.appendChild(enhanceButton);
+    
+    // Add click event listener to the button
+    enhanceButton.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Get the active input element
+      const activeInput = document.querySelector('[data-quantum-prompt-active="true"]');
+      if (!activeInput) {
+        console.error('QuantumPrompt: No active input found');
+        return;
+      }
+      
+      // Get the prompt text
+      let promptText = '';
+      if (activeInput.value !== undefined && activeInput.value !== null) {
+        promptText = activeInput.value;
+      } else if (activeInput.textContent !== undefined && activeInput.textContent !== null) {
+        promptText = activeInput.textContent;
+      } else if (activeInput.innerText !== undefined && activeInput.innerText !== null) {
+        promptText = activeInput.innerText;
+      }
+      
+      if (!promptText || !promptText.trim()) {
+        alert('Please enter a prompt to enhance');
+        return;
+      }
+      
+      console.log('QuantumPrompt: Got prompt text:', promptText);
+      
+      enhanceButton.disabled = true;
+      enhanceButton.innerHTML = '⏳ Enhancing...';
+      
+      try {
+        const enhancedPrompt = await enhancePrompt(promptText);
+        
+        // Update the input field
+        if (activeInput.value !== undefined) {
+          activeInput.value = enhancedPrompt;
+        } else if (activeInput.textContent !== undefined) {
+          activeInput.textContent = enhancedPrompt;
+        } else if (activeInput.innerText !== undefined) {
+          activeInput.innerText = enhancedPrompt;
+        }
+        
+        // Trigger input event to make sure the AI platform recognizes the change
+        activeInput.dispatchEvent(new Event('input', { bubbles: true }));
+        activeInput.dispatchEvent(new Event('change', { bubbles: true }));
+        
+        // Focus the input element
+        activeInput.focus();
+        
+        console.log('QuantumPrompt: Prompt enhanced successfully');
+      } catch (error) {
+        console.error('QuantumPrompt: Error enhancing prompt:', error);
+        alert('Failed to enhance prompt. Please try again.');
+      } finally {
+        enhanceButton.disabled = false;
+        enhanceButton.innerHTML = '✨ Enhance';
+      }
+    });
+  }
+  
+  // Add mouseenter event to show the button
+  inputElement.addEventListener('mouseenter', () => {
+    // Mark this input as active
+    inputElement.dataset.quantumPromptActive = 'true';
+    
+    // Position the button relative to this input
+    positionButton(enhanceButton, inputElement);
+    
+    // Make button visible and clickable
+    enhanceButton.style.opacity = '1';
+    enhanceButton.style.pointerEvents = 'auto';
+  });
+  
+  // Add mouseleave event to hide the button
+  inputElement.addEventListener('mouseleave', (e) => {
+    // Check if we're moving to the button itself
+    const toElement = e.relatedTarget;
+    if (toElement && (toElement.id === 'quantum-enhance-btn' || toElement.closest('#quantum-enhance-btn'))) {
+      return; // Don't hide if moving to the button
+    }
+    
+    // Remove active status
+    inputElement.dataset.quantumPromptActive = 'false';
+    
+    // Hide button and make it non-clickable
+    enhanceButton.style.opacity = '0';
+    enhanceButton.style.pointerEvents = 'none';
+  });
+  
+  // Add mouseleave event to the button to hide it when mouse leaves
+  enhanceButton.addEventListener('mouseleave', (e) => {
+    // Check if we're moving back to the input
+    const toElement = e.relatedTarget;
+    if (toElement && toElement.dataset && toElement.dataset.quantumPromptActive === 'true') {
+      return; // Don't hide if moving back to the active input
+    }
+    
+    // Hide button and make it non-clickable
+    enhanceButton.style.opacity = '0';
+    enhanceButton.style.pointerEvents = 'none';
+  });
+  
+  console.log('QuantumPrompt: Hover behavior set up for input element');
+}
+
+// Function to find input elements and set up hover behavior
+function setupInputElements() {
   if (!currentPlatform) {
     console.log('QuantumPrompt: Not on a supported platform');
     return;
   }
-
+  
   const config = PLATFORMS[currentPlatform];
   
-  // Find the input element
-  const inputElement = findElement(config.inputSelectors);
-  if (!inputElement) {
-    console.log('QuantumPrompt: Input element not found, retrying in 1s');
-    return;
-  }
-  
-  console.log('QuantumPrompt: Found input element:', inputElement);
-  
-  // Create the floating button
-  const enhanceButton = createFloatingButton();
-  
-  // Add click event listener
-  enhanceButton.addEventListener('click', async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Get the prompt text
-    let promptText = '';
-    if (inputElement.value !== undefined && inputElement.value !== null) {
-      promptText = inputElement.value;
-    } else if (inputElement.textContent !== undefined && inputElement.textContent !== null) {
-      promptText = inputElement.textContent;
-    } else if (inputElement.innerText !== undefined && inputElement.innerText !== null) {
-      promptText = inputElement.innerText;
-    }
-    
-    if (!promptText || !promptText.trim()) {
-      alert('Please enter a prompt to enhance');
-      return;
-    }
-    
-    console.log('QuantumPrompt: Got prompt text:', promptText);
-    
-    enhanceButton.disabled = true;
-    enhanceButton.textContent = '⏳ Enhancing...';
-    enhanceButton.style.backgroundColor = '#a29bfe';
-    
-    try {
-      const enhancedPrompt = await enhancePrompt(promptText);
-      
-      // Update the input field
-      if (inputElement.value !== undefined) {
-        inputElement.value = enhancedPrompt;
-      } else if (inputElement.textContent !== undefined) {
-        inputElement.textContent = enhancedPrompt;
-      } else if (inputElement.innerText !== undefined) {
-        inputElement.innerText = enhancedPrompt;
-      }
-      
-      // Trigger input event to make sure the AI platform recognizes the change
-      inputElement.dispatchEvent(new Event('input', { bubbles: true }));
-      inputElement.dispatchEvent(new Event('change', { bubbles: true }));
-      
-      // Focus the input element
-      inputElement.focus();
-      
-      console.log('QuantumPrompt: Prompt enhanced successfully');
-    } catch (error) {
-      console.error('QuantumPrompt: Error enhancing prompt:', error);
-      alert('Failed to enhance prompt. Please try again.');
-    } finally {
-      enhanceButton.disabled = false;
-      enhanceButton.textContent = '✨ Enhance';
-      enhanceButton.style.backgroundColor = '#6c5ce7';
-    }
+  // Find all matching input elements
+  config.inputSelectors.forEach(selector => {
+    const elements = document.querySelectorAll(selector);
+    elements.forEach(element => {
+      setupHoverBehavior(element);
+    });
   });
-  
-  console.log('QuantumPrompt: Enhancement button added successfully');
 }
 
 async function enhancePrompt(originalPrompt) {
+  // Update this URL with your actual deployed AI service endpoint
   const enhancementServiceUrl = 'https://quantum-prompt-58xau0f7o-ethan2000lius-projects.vercel.app/api/enhance';
   
   console.log('QuantumPrompt: Enhancing prompt:', originalPrompt);
@@ -207,22 +243,22 @@ async function enhancePrompt(originalPrompt) {
   }
 }
 
-// Try to inject the button immediately
-injectEnhanceButton();
+// Try to set up input elements immediately
+setupInputElements();
 
 // Try again after a short delay
-setTimeout(injectEnhanceButton, 1000);
+setTimeout(setupInputElements, 1000);
 
 // Try again after the page has fully loaded
 window.addEventListener('load', () => {
   console.log('QuantumPrompt: Page loaded');
-  setTimeout(injectEnhanceButton, 1000);
-  setTimeout(injectEnhanceButton, 3000);
+  setTimeout(setupInputElements, 1000);
+  setTimeout(setupInputElements, 3000);
 });
 
-// Set up a mutation observer to detect when the chat interface is loaded
-const observer = new MutationObserver(() => {
-  injectEnhanceButton();
+// Set up a mutation observer to detect when new input elements are added
+const observer = new MutationObserver((mutations) => {
+  setupInputElements();
 });
 
 // Start observing the document
@@ -232,16 +268,6 @@ observer.observe(document.body, {
 });
 
 // Try periodically in case the UI is slow to load or changes
-setInterval(injectEnhanceButton, 5000);
+setInterval(setupInputElements, 5000);
 
-// Add a keyboard shortcut (Alt+E) to trigger the button
-document.addEventListener('keydown', (e) => {
-  if (e.altKey && e.key === 'e') {
-    const button = document.getElementById('quantum-enhance-btn');
-    if (button) {
-      button.click();
-    }
-  }
-});
-
-console.log('QuantumPrompt: Setup complete'); 
+console.log('QuantumPrompt: Setup complete');
