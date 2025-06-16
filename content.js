@@ -226,8 +226,6 @@ function setupInputElements() {
 }
 
 async function enhancePrompt(originalPrompt) {
-  console.log('QuantumPrompt: Enhancing prompt:', originalPrompt);
-  
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(
       { action: 'enhancePrompt', prompt: originalPrompt },
@@ -235,16 +233,161 @@ async function enhancePrompt(originalPrompt) {
         if (response.success) {
           resolve(response.enhancedPrompt);
         } else {
-          console.error('Error from background script:', response.error);
-          // Use fallback if provided
-          if (response.fallbackPrompt) {
-            resolve(response.fallbackPrompt);
+          // Only log unexpected errors
+          if (response.error !== 'Not authenticated') {
+            console.error('Error from background script:', response.error);
+          }
+          // Show sign in message if not authenticated
+          if (response.error === 'Not authenticated') {
+            showSignInMessage();
+            reject(new Error('Please sign in to use QuantumPrompt'));
           } else {
             reject(new Error(response.error || 'Unknown error'));
           }
         }
       }
     );
+  });
+}
+
+// Function to show sign in message
+function showSignInMessage() {
+  // Create message container if it doesn't exist
+  let messageContainer = document.getElementById('quantum-sign-in-message');
+  if (!messageContainer) {
+    messageContainer = document.createElement('div');
+    messageContainer.id = 'quantum-sign-in-message';
+    messageContainer.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px;
+      background-color: #fff3cd;
+      border: 1px solid #ffeeba;
+      border-radius: 4px;
+      color: #856404;
+      z-index: 10000;
+      max-width: 300px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    `;
+    document.body.appendChild(messageContainer);
+  }
+
+  // Add message content
+  messageContainer.innerHTML = `
+    <div style="margin-bottom: 10px;">Please sign in to use QuantumPrompt's enhancement features.</div>
+    <div style="display: flex; gap: 10px;">
+      <button id="quantum-sign-in" style="
+        padding: 6px 12px;
+        background-color: #6c5ce7;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+      ">Sign In</button>
+      <button id="quantum-learn-more" style="
+        padding: 6px 12px;
+        background-color: #f8f9fa;
+        color: #6c5ce7;
+        border: 1px solid #6c5ce7;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+      ">Learn More</button>
+    </div>
+  `;
+
+  // Add event listeners
+  document.getElementById('quantum-sign-in').addEventListener('click', () => {
+    // Open the extension popup by clicking the extension icon
+    chrome.runtime.sendMessage({ action: 'openPopup' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('Error opening popup:', chrome.runtime.lastError);
+      }
+    });
+    messageContainer.remove();
+  });
+
+  document.getElementById('quantum-learn-more').addEventListener('click', () => {
+    // Open the API documentation page in a new tab
+    window.open('https://quantum-prompt-api.vercel.app/', '_blank');
+    messageContainer.remove();
+  });
+
+  // Auto-remove after 10 seconds
+  setTimeout(() => {
+    if (messageContainer && messageContainer.parentNode) {
+      messageContainer.remove();
+    }
+  }, 10000);
+}
+
+// Function to show upgrade info
+function showUpgradeInfo() {
+  let infoContainer = document.getElementById('quantum-upgrade-info');
+  if (!infoContainer) {
+    infoContainer = document.createElement('div');
+    infoContainer.id = 'quantum-upgrade-info';
+    infoContainer.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      z-index: 10001;
+      max-width: 400px;
+      font-family: Arial, sans-serif;
+    `;
+    document.body.appendChild(infoContainer);
+  }
+
+  infoContainer.innerHTML = `
+    <h3 style="
+      margin: 0 0 15px 0;
+      color: #6c5ce7;
+      font-size: 18px;
+    ">Upgrade Your Experience</h3>
+    <ul style="
+      margin: 0 0 20px 0;
+      padding-left: 20px;
+      color: #2d3436;
+    ">
+      <li style="margin: 8px 0">✨ Access to advanced AI models</li>
+      <li style="margin: 8px 0">🔑 Use your own API keys</li>
+      <li style="margin: 8px 0">📊 Track your usage</li>
+      <li style="margin: 8px 0">🎯 Better prompt enhancements</li>
+    </ul>
+    <button id="quantum-upgrade-sign-in" style="
+      width: 100%;
+      padding: 10px;
+      background-color: #6c5ce7;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    ">Sign In Now</button>
+  `;
+
+  // Add event listener
+  document.getElementById('quantum-upgrade-sign-in').addEventListener('click', () => {
+    // Open the extension popup
+    chrome.runtime.sendMessage({ action: 'openPopup' });
+    infoContainer.remove();
+  });
+
+  // Add click outside to close
+  document.addEventListener('click', function closeInfo(e) {
+    if (!infoContainer.contains(e.target)) {
+      infoContainer.remove();
+      document.removeEventListener('click', closeInfo);
+    }
   });
 }
 

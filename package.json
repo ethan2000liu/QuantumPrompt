@@ -1,0 +1,24 @@
+{
+  "name": "quantum-prompt",
+  "version": "1.0.0",
+  "description": "Enhance your AI prompts with QuantumPrompt",
+  "scripts": {
+    "build": "webpack --mode production && mkdir -p quantum-prompt-build && cp -r dist icons popup.html styles.css manifest.json quantum-prompt-build/ && rm -rf node_modules",
+    "dev": "webpack --mode development --watch"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.27.4",
+    "@babel/preset-env": "^7.27.2",
+    "babel-loader": "^10.0.0",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
+    "dotenv": "^16.5.0",
+    "process": "^0.11.10",
+    "stream-browserify": "^3.0.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  }
+}
