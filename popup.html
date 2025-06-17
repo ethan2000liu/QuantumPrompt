@@ -1,25 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=400, initial-scale=1.0">
   <title>QuantumPrompt</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <!-- Login Form -->
-  <div id="login-form" style="display: none;">
+  <form id="login-form" style="display: none;">
     <h2>Sign In</h2>
-    <form>
-      <div class="form-group">
-        <label for="email">Email:</label>
-        <input type="email" id="email" required>
-      </div>
-      <div class="form-group">
-        <label for="password">Password:</label>
-        <input type="password" id="password" required>
-      </div>
-      <button type="submit">Sign In</button>
-    </form>
-  </div>
+    <div class="form-group">
+      <label for="email">Email:</label>
+      <input type="email" id="email" required>
+    </div>
+    <div class="form-group">
+      <label for="password">Password:</label>
+      <input type="password" id="password" required>
+    </div>
+    <button type="submit">Sign In</button>
+    <div style="margin-top: 10px; text-align: center;">
+      <a href="#" id="show-signup">Don't have an account? Sign Up</a>
+    </div>
+  </form>
+
+  <!-- Registration Form (hidden by default) -->
+  <form id="signup-form" style="display: none;">
+    <h2>Sign Up</h2>
+    <div class="form-group">
+      <label for="signup-email">Email:</label>
+      <input type="email" id="signup-email" required>
+    </div>
+    <div class="form-group">
+      <label for="signup-password">Password:</label>
+      <input type="password" id="signup-password" required>
+    </div>
+    <div class="form-group">
+      <label for="signup-password-confirm">Confirm Password:</label>
+      <input type="password" id="signup-password-confirm" required>
+    </div>
+    <button type="submit">Register</button>
+    <div style="margin-top: 10px; text-align: center;">
+      <a href="#" id="show-login">Already have an account? Sign In</a>
+    </div>
+  </form>
 
   <!-- Main Content -->
   <div id="main-content">
@@ -27,6 +52,23 @@
     <div class="header">
       <h1>QuantumPrompt</h1>
       <button id="sign-out" class="sign-out-btn">Sign Out</button>
+    </div>
+
+    <!-- Manual Prompt Enhancement Section -->
+    <div id="enhance-section" class="section">
+      <h2>Enhance Prompt</h2>
+      <div class="form-group">
+        <label for="prompt-input">Enter your prompt:</label>
+        <textarea id="prompt-input" rows="4" placeholder="Type or paste your prompt here..."></textarea>
+      </div>
+      <div class="form-group">
+        <button id="enhance-button" class="enhance-btn">✨ Enhance</button>
+      </div>
+      <div id="enhanced-result" class="enhanced-result" style="display: none;">
+        <h3>Enhanced Prompt:</h3>
+        <div id="enhanced-text" class="enhanced-text"></div>
+        <button id="copy-enhanced" class="copy-btn">Copy to Clipboard</button>
+      </div>
     </div>
 
     <!-- Settings Section -->

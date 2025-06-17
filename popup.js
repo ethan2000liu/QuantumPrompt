@@ -85,7 +85,12 @@ async function loadSettings() {
     }
   } catch (error) {
     console.error('Error loading settings:', error);
-    showError('Failed to load settings');
+    if (error.message.includes('Session expired')) {
+      showError('Your session has expired. Please log in again.');
+      showLoginForm();
+    } else {
+      showError('Failed to load settings');
+    }
   }
 }
 
@@ -236,6 +241,141 @@ function setupEventListeners() {
   } else {
     console.error('Login form not found!');
   }
+
+  // Manual prompt enhancement
+  const enhanceButton = document.getElementById('enhance-button');
+  const promptInput = document.getElementById('prompt-input');
+  const enhancedResult = document.getElementById('enhanced-result');
+  const enhancedText = document.getElementById('enhanced-text');
+  const copyButton = document.getElementById('copy-enhanced');
+
+  enhanceButton.addEventListener('click', async () => {
+    const prompt = promptInput.value.trim();
+    if (!prompt) {
+      showError('Please enter a prompt to enhance');
+      return;
+    }
+
+    enhanceButton.disabled = true;
+    enhanceButton.innerHTML = '⏳ Enhancing...';
+
+    try {
+      const enhancedPrompt = await api.enhancePrompt(prompt);
+      enhancedText.textContent = enhancedPrompt;
+      enhancedResult.style.display = 'block';
+      showSuccess('Prompt enhanced successfully!');
+    } catch (error) {
+      console.error('Error enhancing prompt:', error);
+      if (error.message.includes('Not authenticated')) {
+        showError('Please sign in to use the enhancement feature');
+        showLoginForm();
+      } else {
+        showError('Failed to enhance prompt. Please try again.');
+      }
+    } finally {
+      enhanceButton.disabled = false;
+      enhanceButton.innerHTML = '✨ Enhance';
+    }
+  });
+
+  copyButton.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(enhancedText.textContent);
+      copyButton.textContent = 'Copied!';
+      copyButton.classList.add('copied');
+      setTimeout(() => {
+        copyButton.textContent = 'Copy to Clipboard';
+        copyButton.classList.remove('copied');
+      }, 2000);
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      showError('Failed to copy to clipboard');
+    }
+  });
+
+  // Toggle between login and signup forms
+  const signupForm = document.getElementById('signup-form');
+  const showSignup = document.getElementById('show-signup');
+  const showLogin = document.getElementById('show-login');
+
+  if (showSignup) {
+    showSignup.addEventListener('click', (e) => {
+      e.preventDefault();
+      loginForm.style.display = 'none';
+      signupForm.style.display = 'block';
+    });
+  }
+  if (showLogin) {
+    showLogin.addEventListener('click', (e) => {
+      e.preventDefault();
+      signupForm.style.display = 'none';
+      loginForm.style.display = 'block';
+    });
+  }
+
+  // Registration logic
+  if (signupForm) {
+    // Remove any previous handler
+    signupForm.onsubmit = null;
+    signupForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      const passwordConfirm = document.getElementById('signup-password-confirm').value;
+      const submitBtn = signupForm.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      
+      if (password !== passwordConfirm) {
+        showError('Passwords do not match');
+        submitBtn.disabled = false;
+        return;
+      }
+
+      try {
+        const res = await fetch('https://quantum-prompt-api.vercel.app/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+          // Show success message and clear form
+          showSuccess('Registration successful! Please check your email to verify your account before signing in.');
+          signupForm.reset();
+          
+          // Add a message about next steps
+          const nextSteps = document.createElement('div');
+          nextSteps.className = 'next-steps';
+          nextSteps.innerHTML = `
+            <p>Next steps:</p>
+            <ol>
+              <li>Check your email for a verification link</li>
+              <li>Click the verification link</li>
+              <li>Return here to sign in</li>
+            </ol>
+          `;
+          
+          // Remove any existing next steps message
+          const existingNextSteps = signupForm.querySelector('.next-steps');
+          if (existingNextSteps) {
+            existingNextSteps.remove();
+          }
+          
+          signupForm.appendChild(nextSteps);
+          // Don't automatically switch to login form
+        } else {
+          showError(data.message || 'Registration failed. Please try again.');
+        }
+      } catch (err) {
+        showError('Registration failed. Please try again.');
+        console.error('Registration error:', err);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    };
+  }
 }
 
 function setupDeleteApiKeyHandler() {
@@ -297,6 +437,11 @@ async function renderApiKeysList() {
     }
   } catch (error) {
     console.error('Error rendering API keys list:', error);
-    showError('Failed to load API keys list');
+    if (error.message.includes('Session expired')) {
+      showError('Your session has expired. Please log in again.');
+      showLoginForm();
+    } else {
+      showError('Failed to load API keys list');
+    }
   }
 } 

@@ -227,9 +227,11 @@ function setupInputElements() {
 
 async function enhancePrompt(originalPrompt) {
   return new Promise((resolve, reject) => {
+    console.log('QuantumPrompt: Sending enhance request to background script');
     chrome.runtime.sendMessage(
       { action: 'enhancePrompt', prompt: originalPrompt },
       (response) => {
+        console.log('QuantumPrompt: Received response from background:', response);
         if (response.success) {
           resolve(response.enhancedPrompt);
         } else {

@@ -16,10 +16,18 @@ class API {
       if (error) throw error;
       console.log('API: Login successful, data:', data);
       if (data.session) {
+        // Store in localStorage for popup
         localStorage.setItem('supabase.session', JSON.stringify(data.session));
         await supabase.auth.setSession(data.session);
         localStorage.setItem('auth_token', data.session.access_token);
-        console.log('API: Storing access token:', data.session.access_token);
+        
+        // Store in chrome.storage.local for background script
+        await chrome.storage.local.set({
+          'supabase.session': JSON.stringify(data.session),
+          'auth_token': data.session.access_token
+        });
+        
+        console.log('API: Storing access token in both localStorage and chrome.storage.local');
       }
       return data;
     } catch (error) {
@@ -29,9 +37,37 @@ class API {
   }
 
   getAuthToken() {
-    const token = localStorage.getItem('auth_token');
-    console.log('API: Getting auth token:', token ? 'Token exists' : 'Not found');
-    return token;
+    // Try chrome.storage.local first (for background script)
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['auth_token'], (result) => {
+        if (result.auth_token) {
+          console.log('API: Got token from chrome.storage.local');
+          resolve(result.auth_token);
+        } else {
+          // Fallback to localStorage (for popup)
+          const token = localStorage.getItem('auth_token');
+          console.log('API: Got token from localStorage:', !!token);
+          resolve(token);
+        }
+      });
+    });
+  }
+
+  handleSessionExpiration() {
+    // Clear from localStorage
+    localStorage.removeItem('supabase.session');
+    localStorage.removeItem('auth_token');
+    
+    // Clear from chrome.storage.local
+    chrome.storage.local.remove(['supabase.session', 'auth_token']);
+    
+    // Sign out from Supabase
+    this.supabase.auth.signOut();
+    
+    // Show login form
+    if (typeof showLoginForm === 'function') {
+      showLoginForm();
+    }
   }
 
   async handleResponse(response, errorMessage) {
@@ -46,9 +82,7 @@ class API {
       console.error(`${errorMessage} response:`, errorText);
       
       if (response.status === 401) {
-        // Clear invalid token and redirect to login
-        localStorage.removeItem('supabase.auth.token');
-        window.location.href = 'popup.html#login';
+        this.handleSessionExpiration();
         throw new Error('Session expired. Please log in again.');
       }
       
@@ -69,21 +103,32 @@ class API {
 
   async enhancePrompt(prompt) {
     try {
-      const token = await this.getAuthToken()
+      console.log('API: Starting enhance prompt');
+      const token = await this.getAuthToken();
+      console.log('API: Got auth token:', !!token);
+      
+      if (!token) {
+        console.log('API: No auth token found');
+        throw new Error('Not authenticated');
+      }
+      
       const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       }
       
-      const response = await fetch(`${this.baseUrl}/api/enhance`, {
+      console.log('API: Making enhance request');
+      const response = await fetch(`${this.baseUrl}/api/prompt/enhance`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ prompt, model: 'gemini-1.5-flash' })
       })
       
-      return this.handleResponse(response, 'Failed to enhance prompt')
+      console.log('API: Got response:', response.status);
+      const data = await this.handleResponse(response, 'Failed to enhance prompt');
+      return data.data.enhancedPrompt; // Extract the enhanced prompt from the response
     } catch (error) {
-      console.error('Enhance error:', error)
+      console.error('API: Enhance error:', error)
       throw error
     }
   }
@@ -144,7 +189,7 @@ class API {
   }
 
   async deleteApiKey(keyId) {
-    const token = this.getAuthToken();
+    const token = await this.getAuthToken();
     if (!token) {
       throw new Error('Not authenticated');
     }

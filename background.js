@@ -1,3 +1,5 @@
+import api from './api.js';
+
 // This can be used for any background tasks or event handling
 chrome.runtime.onInstalled.addListener(() => {
   console.log('QuantumPrompt extension installed');
@@ -46,52 +48,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Function to enhance a prompt using the API
 async function enhancePrompt(originalPrompt) {
-  // Add a timeout to the fetch request
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+  try {
+    console.log('Background: Starting enhance prompt');
+    // Get the auth token from storage
+    const { auth_token } = await chrome.storage.local.get(['auth_token']);
+    console.log('Background: Auth token exists:', !!auth_token);
+    
+    if (!auth_token) {
+      console.log('Background: No auth token found');
+      throw new Error('Not authenticated');
+    }
 
-  const API_URL = 'https://quantum-prompt-api.vercel.app/api/prompt/enhance';
-
-  // Read the auth_token from chrome.storage.local
-  const token = await new Promise((resolve) => {
-    chrome.storage.local.get(['auth_token'], (result) => {
-      resolve(result.auth_token);
-    });
-  });
-  if (!token) {
-    throw new Error('Not authenticated');
-  }
-
-  const headers = {
-    'Content-Type': 'application/json',
-    'Origin': 'chrome-extension://quantum-prompt',
-    'Authorization': `Bearer ${token}`
-  };
-
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ prompt: originalPrompt }),
-    signal: controller.signal
-  });
-
-  clearTimeout(timeoutId);
-
-  if (response.status === 401) {
-    throw new Error('Not authenticated');
-  }
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('API error response:', errorText);
-    throw new Error(`API responded with status: ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  if (data.enhancedPrompt) {
-    return data.enhancedPrompt;
-  } else {
-    throw new Error('No enhanced prompt returned from API');
+    // Use the default API instance
+    console.log('Background: Calling API enhancePrompt');
+    const enhancedPrompt = await api.enhancePrompt(originalPrompt);
+    console.log('Background: Enhancement successful');
+    return enhancedPrompt;
+  } catch (error) {
+    console.error('Background: Enhance error:', error);
+    if (error.message === 'Not authenticated' || error.message.includes('401')) {
+      throw new Error('Not authenticated');
+    }
+    throw error;
   }
 } 
